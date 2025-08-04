@@ -1,0 +1,10 @@
+handle,namespace,key,value,type
+red-snowboard,custom,color,red,single_line_text_field
+red-snowboard,custom,material,fiberglass,single_line_text_field
+red-snowboard,custom,weight,5.2,number_decimal
+blue-snowboard,custom,color,blue,single_line_text_field
+blue-snowboard,custom,material,carbon_fiber,single_line_text_field
+blue-snowboard,custom,weight,4.8,number_decimal
+green-snowboard,custom,color,green,single_line_text_field
+green-snowboard,custom,eco_friendly,true,boolean
+green-snowboard,custom,certification_date,2024-01-15,date
