@@ -19,7 +19,7 @@ export default function App() {
   return (
     <AppProvider isEmbeddedApp apiKey={apiKey}>
       <NavMenu>
-        <Link to="/app/csv-update" rel="home">
+        <Link to="/app/csv-updater" rel="home">
           Home
         </Link>
         {/* <Link to="/app/csv-updater">CSV Metafield Updater</Link> */}
