@@ -3,7 +3,7 @@
 client_id = "77d4b4d88da7a1e6387308b4f9993ba7"
 name = "product svc updater"
 handle = "product-svc-updater"
-application_url = "https://hydrogen-audience-bridal-federation.trycloudflare.com"
+application_url = "https://csv-updater-9u9zv.ondigitalocean.app"
 embedded = true
 
 [build]
@@ -27,9 +27,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://hydrogen-audience-bridal-federation.trycloudflare.com/auth/callback",
-  "https://hydrogen-audience-bridal-federation.trycloudflare.com/auth/shopify/callback",
-  "https://hydrogen-audience-bridal-federation.trycloudflare.com/api/auth/callback"
+  "https://csv-updater-9u9zv.ondigitalocean.app/auth/callback",
+  "https://csv-updater-9u9zv.ondigitalocean.app/auth/shopify/callback",
+  "https://csv-updater-9u9zv.ondigitalocean.app/api/auth/callback"
 ]
 
 [pos]
