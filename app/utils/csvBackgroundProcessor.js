@@ -147,12 +147,12 @@ async function processMetafields(admin, product, metafieldsToSet, results, handl
 }
 
 async function processProductProperties(admin, product, productData, results, handle, dryRun) {
-  // Simplified product properties processing
+  // Full product properties processing (matching main processor)
   const updateInput = { id: product.id };
-  
+
   // Build basic update input
   if (productData.title) updateInput.title = productData.title;
-  if (productData.bodyHtml) updateInput.descriptionHtml = productData.bodyHtml;
+  if (productData.bodyHtml) updateInput.descriptionHtml = productData.title;
   if (productData.vendor) updateInput.vendor = productData.vendor;
   if (productData.productType) updateInput.productType = productData.productType;
   if (productData.published !== undefined) {
@@ -178,14 +178,148 @@ async function processProductProperties(admin, product, productData, results, ha
   }
   updateInput.tags = tagsArray;
 
-  // Add metafields (simplified - just add the main ones)
+  // Handle all metafields (matching main processor)
   const metafields = [];
+
+  // Components metafield (with proper JSON parsing logic)
   if (productData.components) {
+    // Parse components value - if it's semicolon-separated, convert to JSON array
+    let componentsValue;
+    if (productData.components.includes(';')) {
+      // Convert semicolon-separated values to JSON array
+      const componentsArray = productData.components.split(';').map(c => c.trim()).filter(c => c);
+      componentsValue = JSON.stringify(componentsArray);
+    } else {
+      // Single component or already JSON
+      try {
+        // Try to parse as JSON first
+        JSON.parse(productData.components);
+        componentsValue = productData.components;
+      } catch {
+        // If not valid JSON, wrap in array
+        componentsValue = JSON.stringify([productData.components.trim()]);
+      }
+    }
+
     metafields.push({
       namespace: 'custom',
       key: 'components',
-      value: productData.components,
+      value: componentsValue,
       type: 'json'
+    });
+  }
+
+  // Shipping Info metafield
+  if (productData.shippingInfo) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'shipping_info',
+      value: productData.shippingInfo,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // Unit/Packs metafield
+  if (productData.unitPacks) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'unit_packs',
+      value: productData.unitPacks,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // COA metafield (Certificate of Analysis - likely a URL)
+  if (productData.coa) {
+    // Validate if it's a URL, otherwise treat as text
+    const isUrl = productData.coa.startsWith('http://') || productData.coa.startsWith('https://');
+    metafields.push({
+      namespace: 'custom',
+      key: 'coa',
+      value: productData.coa,
+      type: isUrl ? 'url' : 'single_line_text_field'
+    });
+  }
+
+  // SDS metafield (Safety Data Sheet - likely a URL)
+  if (productData.sds) {
+    // Validate if it's a URL, otherwise treat as text
+    const isUrl = productData.sds.startsWith('http://') || productData.sds.startsWith('https://');
+    metafields.push({
+      namespace: 'custom',
+      key: 'sds',
+      value: productData.sds,
+      type: isUrl ? 'url' : 'single_line_text_field'
+    });
+  }
+
+  // Storage Conditions metafield
+  if (productData.storageConditions) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'storage_conditions',
+      value: productData.storageConditions,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // Volume metafield
+  if (productData.volume) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'volume',
+      value: productData.volume,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // Matrix metafield
+  if (productData.matrix) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'matrix',
+      value: productData.matrix,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // CAS Number metafield
+  if (productData.casNumber) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'cas_number',
+      value: productData.casNumber,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // Catalog Number metafield
+  if (productData.catalogNumber) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'catalog_number',
+      value: productData.catalogNumber,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // DOT Hazardous metafield
+  if (productData.dotHazardous) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'dot_hazardous',
+      value: productData.dotHazardous,
+      type: 'single_line_text_field'
+    });
+  }
+
+  // Expiration Months metafield
+  if (productData.expirationMonths) {
+    metafields.push({
+      namespace: 'custom',
+      key: 'expiration_months',
+      value: productData.expirationMonths.toString(),
+      type: 'number_integer'
     });
   }
 
