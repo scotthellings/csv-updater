@@ -56,6 +56,129 @@ function fixMultilineCSV(csvText) {
 }
 
 /**
+ * Preprocess CSV to handle component fields that may contain unquoted commas
+ * This function attempts to detect and quote component fields that contain chemical names with commas
+ */
+function preprocessCSVForComponents(csvText) {
+  try {
+    const lines = csvText.split('\n');
+    if (lines.length === 0) return csvText;
+
+    const headerLine = lines[0];
+    const headers = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
+
+    // Find component column index
+    const componentColumnIndex = headers.findIndex(header =>
+      header.toLowerCase().includes('component')
+    );
+
+    if (componentColumnIndex === -1) {
+      return csvText; // No component column found
+    }
+
+    console.log(`Found component column at index ${componentColumnIndex}: "${headers[componentColumnIndex]}"`);
+
+    // Process data rows
+    const processedLines = [headerLine]; // Keep header as-is
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) {
+        processedLines.push(line);
+        continue;
+      }
+
+      // Split the line, but be careful about quoted fields
+      const fields = [];
+      let currentField = '';
+      let inQuotes = false;
+      let j = 0;
+
+      while (j < line.length) {
+        const char = line[j];
+
+        if (char === '"') {
+          inQuotes = !inQuotes;
+          currentField += char;
+        } else if (char === ',' && !inQuotes) {
+          fields.push(currentField);
+          currentField = '';
+        } else {
+          currentField += char;
+        }
+        j++;
+      }
+      fields.push(currentField); // Add the last field
+
+      // Check if the component field looks like it might be truncated
+      if (fields.length > componentColumnIndex) {
+        const componentValue = fields[componentColumnIndex].trim();
+
+        // If the component value is just a number and very short, it might be truncated
+        // due to an unquoted comma in a chemical name
+        if (/^\d+$/.test(componentValue) && componentValue.length < 3) {
+          console.warn(`Row ${i + 1}: Component value "${componentValue}" appears truncated. Original line: ${line.substring(0, 100)}...`);
+
+          // Try to reconstruct the component field by looking for chemical name patterns
+          // This is a heuristic approach - look for patterns like "1,1,2,2-Tetrachloroethane"
+          const remainingFields = fields.slice(componentColumnIndex + 1);
+          let reconstructedComponent = componentValue;
+          let fieldsToMerge = 0;
+
+          // Look for continuation patterns (number, number, chemical name parts)
+          for (let k = 0; k < remainingFields.length; k++) {
+            const nextField = remainingFields[k].trim();
+
+            // If next field is a single digit, merge it
+            if (/^\d+$/.test(nextField)) {
+              reconstructedComponent += ',' + nextField;
+              fieldsToMerge++;
+            }
+            // If next field looks like a chemical name part (contains letters, hyphens, etc.)
+            else if (/^[a-zA-Z0-9-]+$/.test(nextField) && nextField.length > 1) {
+              reconstructedComponent += ',' + nextField;
+              fieldsToMerge++;
+              // This is likely the end of the chemical name, so break
+              break;
+            }
+            // If we hit something that looks like a vendor name or other field, stop
+            else if (/^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/.test(nextField)) {
+              break;
+            }
+            // If it's something else entirely, stop
+            else {
+              break;
+            }
+          }
+
+          if (fieldsToMerge > 0) {
+            console.log(`Reconstructed component: "${reconstructedComponent}"`);
+
+            // Rebuild the fields array with the reconstructed component
+            const newFields = [
+              ...fields.slice(0, componentColumnIndex),
+              `"${reconstructedComponent}"`, // Quote the reconstructed component
+              ...fields.slice(componentColumnIndex + 1 + fieldsToMerge)
+            ];
+
+            processedLines.push(newFields.join(','));
+            continue;
+          }
+        }
+      }
+
+      // If no reconstruction was needed, keep the original line
+      processedLines.push(line);
+    }
+
+    return processedLines.join('\n');
+  } catch (error) {
+    console.warn('Error in CSV preprocessing:', error);
+    return csvText; // Return original if preprocessing fails
+  }
+}
+
+/**
  * Parse CSV file and validate the structure
  * Expected CSV format can be either:
  * 1. Product properties: Handle,Title,Body (HTML),Vendor,Type,Tags,Published,Components (product.metafields.custom.components)
@@ -83,6 +206,9 @@ export async function parseCSV(file, options = {}) {
     // This is a heuristic approach for handling unescaped newlines in quoted fields
     csvText = fixMultilineCSV(csvText);
 
+    // Preprocess CSV to handle potential issues with unquoted component fields containing commas
+    csvText = preprocessCSVForComponents(csvText);
+
     // If preview mode, limit the CSV text to first N rows
     if (isPreview) {
       const lines = csvText.split('\n');
@@ -108,7 +234,18 @@ export async function parseCSV(file, options = {}) {
         delimiter: ',', // Explicit comma delimiter
         transformHeader: (header) => header.trim(), // Trim header whitespace
         fastMode: false, // Disable fast mode for better error handling
-        delimitersToGuess: [',', '\t', '|', ';'] // Try different delimiters if comma fails
+        delimitersToGuess: [',', '\t', '|', ';'], // Try different delimiters if comma fails
+        transform: (value, field) => {
+          // Special handling for component fields that might contain unquoted commas
+          if (field && field.toLowerCase().includes('component') && value) {
+            // If this looks like a truncated chemical name (starts with digit and is very short),
+            // log a warning about potential CSV parsing issues
+            if (/^\d+$/.test(value.trim()) && value.trim().length < 3) {
+              console.warn(`Potential CSV parsing issue detected for field "${field}": value "${value}" may be truncated due to unquoted commas. Consider quoting this field in the CSV.`);
+            }
+          }
+          return value;
+        }
       });
     } catch (parseError) {
       console.warn('Standard CSV parsing failed, trying fallback method:', parseError.message);
@@ -131,7 +268,16 @@ export async function parseCSV(file, options = {}) {
         step: undefined,
         complete: undefined,
         error: undefined,
-        download: false
+        download: false,
+        transform: (value, field) => {
+          // Same transform logic for fallback
+          if (field && field.toLowerCase().includes('component') && value) {
+            if (/^\d+$/.test(value.trim()) && value.trim().length < 3) {
+              console.warn(`Potential CSV parsing issue detected for field "${field}": value "${value}" may be truncated due to unquoted commas. Consider quoting this field in the CSV.`);
+            }
+          }
+          return value;
+        }
       });
     }
 

@@ -185,19 +185,28 @@ async function processProductProperties(admin, product, productData, results, ha
   if (productData.components) {
     // Parse components value - if it's semicolon-separated, convert to JSON array
     let componentsValue;
-    if (productData.components.includes(';')) {
+
+    // Check if the components value looks truncated (single digit or very short)
+    // This might indicate CSV parsing issues with unquoted commas
+    const trimmedComponents = productData.components.trim();
+
+    if (trimmedComponents.includes(';')) {
       // Convert semicolon-separated values to JSON array
-      const componentsArray = productData.components.split(';').map(c => c.trim()).filter(c => c);
+      const componentsArray = trimmedComponents.split(';').map(c => c.trim()).filter(c => c);
       componentsValue = JSON.stringify(componentsArray);
     } else {
       // Single component or already JSON
       try {
         // Try to parse as JSON first
-        JSON.parse(productData.components);
-        componentsValue = productData.components;
+        JSON.parse(trimmedComponents);
+        componentsValue = trimmedComponents;
       } catch {
         // If not valid JSON, wrap in array
-        componentsValue = JSON.stringify([productData.components.trim()]);
+        // Check if this looks like a truncated value (just a number)
+        if (/^\d+$/.test(trimmedComponents) && trimmedComponents.length < 3) {
+          console.warn(`Warning: Component value "${trimmedComponents}" appears to be truncated. This may be due to unquoted commas in CSV. Consider quoting the component field in the CSV file.`);
+        }
+        componentsValue = JSON.stringify([trimmedComponents]);
       }
     }
 
