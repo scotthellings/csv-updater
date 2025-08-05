@@ -480,7 +480,7 @@ async function processProductProperties(admin, product, productData, results, ha
       namespace: 'custom',
       key: 'expiration_months',
       value: productData.expirationMonths.toString(),
-      type: 'number_integer'
+      type: 'single_line_text_field'
     });
   }
 
