@@ -129,7 +129,9 @@ export default function CSVUpdater() {
           <Text variant="bodyMd" fontWeight="bold">
             {file.name}
           </Text>
-          <Text variant="bodySm" color="subdued">{(file.size / 1024).toFixed(1)} KB</Text>
+          <Text variant="bodySm" color="subdued">
+            {file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Size unknown'}
+          </Text>
         </div>
       </InlineStack>
       <Button onClick={handleFileRemove}>Remove</Button>
